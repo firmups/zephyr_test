@@ -1,0 +1,37 @@
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: firmups
+      url-base: https://github.com/firmups
+    - name: mcuboot
+      url-base: https://github.com/mcu-tools
+  projects:
+    - name: zephyr
+      path: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.3.0
+      west-commands: scripts/west-commands.yml
+      import:
+        name-allowlist:
+          - cmsis
+          - hal_stm32
+          - hal_nordic
+          - segger
+          - cmsis_6
+          - fatfs
+          - littlefs
+          - mcuboot
+          - mbedtls
+    # - name: mcuboot
+    #   remote: mcuboot
+    #   revision: v2.3.0
+    #   path: bootloader/mcuboot
+    #   groups:
+    #     - bootloader
+    - name: firmups-device-sdk
+      repo-path: device-sdk
+      path: ./modules/lib/firmups-device-sdk
+      remote: firmups
+      revision: v0.1.0
+      submodules: true

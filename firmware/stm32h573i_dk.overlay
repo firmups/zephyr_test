@@ -1,0 +1,75 @@
+/* STM32H573-specific overlay to the standard DeviceTree
+ *
+ * SRAM1, SRAM2 and SRAM3 are contiguous so they are clustered
+ * together to take advantage of the space they have to offer.
+ */
+
+/delete-node/ &sram1;
+/delete-node/ &sram2;
+/delete-node/ &sram3;
+
+/ {
+    chosen {
+        zephyr,sram = &sram123;
+        zephyr,mcuboot-primary = &slot0_partition;
+        zephyr,mcuboot-secondary = &slot1_partition;
+        zephyr,mcuboot-scratch = &scratch_partition;
+    };
+
+    fstab {
+        compatible = "zephyr,fstab";
+        data1: data1 {
+            compatible = "zephyr,fstab,fatfs";
+            automount;
+            disk-access;
+			mount-point = "/SD:";
+        };
+    };
+
+    sram123: memory@20000000 {
+        compatible = "mmio-sram";
+        reg = <0x20000000 DT_SIZE_K(640)>;
+    };
+};
+
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        /delete-node/ partition@0;
+        /delete-node/ partition@10000;
+        /delete-node/ partition@80000;
+        /delete-node/ partition@ee000;
+
+        boot_partition: partition@0 {
+            label = "mcuboot";
+            reg = <0x00000000 DT_SIZE_K(64)>;
+        };
+
+        slot0_partition: partition@10000 {
+            label = "image-0";
+            reg = <0x00010000 DT_SIZE_K(768)>;  // spans Bank1
+        };
+
+        slot1_partition: partition@D0000 {
+            label = "image-1";
+            reg = <0x000D0000 DT_SIZE_K(768)>;  // starts in Bank2
+        };
+
+        scratch_partition: partition@190000 {
+            label = "image-scratch";
+            reg = <0x00190000 DT_SIZE_K(64)>;
+            };
+
+        storage_partition: partition@1A0000 {
+            label = "storage";
+            reg = <0x001A0000 DT_SIZE_K(64)>;
+        };
+    };
+};
+
+&sdmmc1 {
+    clk-div = <3>;
+};

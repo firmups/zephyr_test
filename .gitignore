@@ -1,0 +1,12 @@
+zephyr/
+zephyr-sdk-*/
+modules/
+.pyenv/
+.west/
+build/
+build_native/
+build_dk/
+.vscode/settings.json
+net-tools
+bootloader/
+flash.bin

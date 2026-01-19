@@ -1,0 +1,91 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  // It is recommend to add shortcut for running tasks (runTask),
+  // to make the most out of the tasks functionality
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build native_sim",
+      "type": "shell",
+      "command": "cd firmware && west build -b native_sim/native/64 --build-dir build_native",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build"
+      }
+    },
+    {
+      "label": "Build dev board",
+      "type": "shell",
+      "command": "cd firmware && west build -b stm32h573i_dk --sysbuild --build-dir build_dk",
+      //"command": "cd firmware && west build -b stm32h573i_dk --build-dir build_dk",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Rebuild dev board",
+      "type": "shell",
+      "command": "cd firmware && west build -b stm32h573i_dk --pristine --sysbuild --build-dir build_dk",
+      //"command": "cd firmware && west build -b stm32h573i_dk --pristine --build-dir build_dk",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": ["$gcc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Flash dev board bootloader",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_dk/mcuboot --runner pyocd",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash dev board firmware",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_dk/firmware --runner pyocd",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash dev board combined",
+      "type": "shell",
+      "command": "cd firmware && pyocd erase --chip && west flash -d build_dk --runner pyocd",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run native_sim",
+      "type": "shell",
+      "options": {
+        "shell": {
+          "args": ["-i"]
+        }
+      },
+      "command": "./scripts/run_native_sim.sh",
+      "presentation": {
+        "reveal": "always",
+        "close": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
