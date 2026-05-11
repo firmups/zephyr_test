@@ -11,6 +11,8 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/dfu/flash_img.h>
 #include <zephyr/random/random.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <firmups_zephyr_bluetooth/firmups_bt_gateway.h>
 
 #include <stdio.h>
 
@@ -69,6 +71,31 @@ struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffe
 
 	LOG_INF("Firmware updater initialized. Device ID: %d, Firmware Version: %d", device_id,
 		firmware_version);
+
+	int bt_err = bt_enable(NULL);
+	if (bt_err) {
+		LOG_ERR("Bluetooth enable failed: %d", bt_err);
+		return NULL;
+	}
+
+	bt_err = firmups_bt_gateway_init(context->firmups_context);
+	if (bt_err) {
+		LOG_ERR("BT gateway init failed: %d", bt_err);
+		return NULL;
+	}
+
+	static const uint8_t bt_flags[] = {BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR};
+	static const uint8_t bt_name[] = CONFIG_BT_DEVICE_NAME;
+	static const struct bt_data ad[] = {
+		{.type = BT_DATA_FLAGS, .data_len = sizeof(bt_flags), .data = bt_flags},
+		{.type = BT_DATA_NAME_COMPLETE, .data_len = sizeof(bt_name) - 1, .data = bt_name},
+	};
+	bt_err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), NULL, 0);
+	if (bt_err) {
+		LOG_ERR("Advertising start failed: %d", bt_err);
+		return NULL;
+	}
+	LOG_INF("BLE advertising started as \"%s\"", CONFIG_BT_DEVICE_NAME);
 
 	if (!boot_is_img_confirmed()) {
 		LOG_INF("Confirming current firmware image...");
@@ -201,17 +228,6 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 }
 
 /* ===================== Private Functions ===================== */
-// int firmups_sdk_log_debug(const char *file, int line, const char *format, ...)
-// {
-// 	va_list args;
-// 	va_start(args, format);
-// 	uint8_t buffer[256];
-// 	int ret = sprintf(buffer, format, args);
-// 	va_end(args);
-// 	LOG_DBG("DEBUG: %s:%d: %s", file, line, buffer);
-// 	return ret;
-// }
-
 int firmups_sdk_log_info(const char *file, int line, const char *format, ...)
 {
 	va_list args;
@@ -264,10 +280,10 @@ static enum firmups_sdk_error_code get_key(uint8_t *key_buffer, uint16_t key_buf
 	const uint8_t hardcoded_key[16] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x57, 0x6f, 0x72,
 					   0x6c, 0x64, 0x35, 0x48, 0x75, 0x95, 0x63, 0x24};
 	if (key_buffer_size > sizeof(hardcoded_key)) {
-		return FIRMUPS_SDK_ERROR_BUFFER_TOO_SMALL; // Buffer too small
+		return FIRMUPS_SDK_ERROR_BUFFER_TOO_SMALL;
 	}
 	memcpy(key_buffer, hardcoded_key, key_buffer_size);
-	return FIRMUPS_SDK_ERROR_NONE; // Success
+	return FIRMUPS_SDK_ERROR_NONE;
 }
 
 static enum firmups_sdk_error_code send_data(uint8_t *send_buffer, uint16_t send_buffer_size,
@@ -287,14 +303,12 @@ static int write_firmware_to_secondary_slot(char const *path)
 	struct fs_file_t file;
 	fs_file_t_init(&file);
 
-	/* Open the image file (must be an MCUboot-signed image) */
 	rc = fs_open(&file, path, FS_O_READ);
 	if (rc < 0) {
 		LOG_ERR("fs_open('%s') failed: %d", path, rc);
 		return rc;
 	}
 
-	/* Get the flash area ID from the fixed partition label */
 	uint8_t area_id = PARTITION_ID(slot1_partition);
 	const struct flash_area *fa;
 
@@ -305,7 +319,6 @@ static int write_firmware_to_secondary_slot(char const *path)
 		return rc;
 	}
 
-	/* Erase the entire target partition (safe baseline) */
 	rc = flash_area_erase(fa, 0, fa->fa_size);
 	if (rc) {
 		LOG_ERR("flash_area_erase size=0x%zx failed: %d", fa->fa_size, rc);
@@ -314,7 +327,6 @@ static int write_firmware_to_secondary_slot(char const *path)
 		return rc;
 	}
 
-	/* Initialize buffered writer tied to this partition */
 	struct flash_img_context ctx;
 	rc = flash_img_init_id(&ctx, area_id);
 	if (rc) {
@@ -324,7 +336,6 @@ static int write_firmware_to_secondary_slot(char const *path)
 		return rc;
 	}
 
-	/* Stream the file to flash in chunks */
 	uint8_t buf[1024];
 	ssize_t rd;
 	size_t total = 0;
@@ -337,7 +348,6 @@ static int write_firmware_to_secondary_slot(char const *path)
 			break;
 		}
 		if (rd > 0) {
-			/* flush=false for intermediate chunks */
 			rc = flash_img_buffered_write(&ctx, buf, (size_t)rd, false);
 			if (rc) {
 				LOG_ERR("flash_img_buffered_write failed: %d", rc);
@@ -347,9 +357,8 @@ static int write_firmware_to_secondary_slot(char const *path)
 		}
 	} while (rd > 0);
 
-	/* Final flush to commit remaining buffered bytes and pad to block boundary */
 	if (rc == 0) {
-		rc = flash_img_buffered_write(&ctx, NULL, 0, true); /* flush=true */
+		rc = flash_img_buffered_write(&ctx, NULL, 0, true);
 		if (rc) {
 			LOG_ERR("final flush failed: %d", rc);
 		}
@@ -369,5 +378,5 @@ static bool file_exists(const char *path)
 	struct fs_dirent entry;
 
 	int ret = fs_stat(path, &entry);
-	return (ret == 0); // true = existiert
+	return (ret == 0);
 }

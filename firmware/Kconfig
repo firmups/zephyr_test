@@ -1,0 +1,13 @@
+source "Kconfig.zephyr"
+
+config APP_WIFI_SSID
+	string "WiFi SSID"
+	default ""
+	help
+	  SSID of the network to join. Set in credentials.conf (not tracked by git).
+
+config APP_WIFI_PSK
+	string "WiFi passphrase"
+	default ""
+	help
+	  WPA2 passphrase. Set in credentials.conf (not tracked by git).

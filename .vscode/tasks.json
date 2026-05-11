@@ -12,41 +12,47 @@
       "presentation": {
         "reveal": "always"
       },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": [
+        "$gcc"
+      ],
       "group": {
         "kind": "build"
       }
     },
     {
-      "label": "Build dev board",
+      "label": "Build stm32 board",
       "type": "shell",
       "command": "cd firmware && west build -b stm32h573i_dk --sysbuild --build-dir build_dk",
       //"command": "cd firmware && west build -b stm32h573i_dk --build-dir build_dk",
       "presentation": {
         "reveal": "always"
       },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": [
+        "$gcc"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
       }
     },
     {
-      "label": "Rebuild dev board",
+      "label": "Rebuild stm32 board",
       "type": "shell",
       "command": "cd firmware && west build -b stm32h573i_dk --pristine --sysbuild --build-dir build_dk",
       //"command": "cd firmware && west build -b stm32h573i_dk --pristine --build-dir build_dk",
       "presentation": {
         "reveal": "always"
       },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": [
+        "$gcc"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
       }
     },
     {
-      "label": "Flash dev board bootloader",
+      "label": "Flash stm32 board bootloader",
       "type": "shell",
       "command": "cd firmware && west flash -d build_dk/mcuboot --runner pyocd",
       "presentation": {
@@ -55,7 +61,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Flash dev board firmware",
+      "label": "Flash stm32 board firmware",
       "type": "shell",
       "command": "cd firmware && west flash -d build_dk/firmware --runner pyocd",
       "presentation": {
@@ -64,9 +70,66 @@
       "problemMatcher": []
     },
     {
-      "label": "Flash dev board combined",
+      "label": "Flash stm32 board combined",
       "type": "shell",
       "command": "cd firmware && pyocd erase --chip && west flash -d build_dk --runner pyocd",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build nxp board",
+      "type": "shell",
+      "command": "cd firmware && west build -b frdm_rw612 --sysbuild --build-dir build_nxp",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Rebuild nxp board",
+      "type": "shell",
+      "command": "cd firmware && west build -b frdm_rw612 --pristine --sysbuild --build-dir build_nxp",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Flash nxp board bootloader",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nxp/mcuboot --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash nxp board firmware",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nxp/firmware --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash nxp board combined",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nxp --runner jlink",
       "presentation": {
         "reveal": "always"
       },
@@ -77,7 +140,9 @@
       "type": "shell",
       "options": {
         "shell": {
-          "args": ["-i"]
+          "args": [
+            "-i"
+          ]
         }
       },
       "command": "./scripts/run_native_sim.sh",

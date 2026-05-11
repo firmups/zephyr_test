@@ -4,34 +4,36 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: firmups
       url-base: https://github.com/firmups
+    - name: firmups-ssh
+      url-base: git@github.com:firmups
     - name: mcuboot
       url-base: https://github.com/mcu-tools
   projects:
     - name: zephyr
       path: zephyr
       remote: zephyrproject-rtos
-      revision: v4.3.0
+      revision: v4.4.0
       west-commands: scripts/west-commands.yml
       import:
         name-allowlist:
           - cmsis
+          - cmsis_6
+          - hal_nxp
           - hal_stm32
           - hal_nordic
           - segger
-          - cmsis_6
           - fatfs
           - littlefs
           - mcuboot
           - mbedtls
-    # - name: mcuboot
-    #   remote: mcuboot
-    #   revision: v2.3.0
-    #   path: bootloader/mcuboot
-    #   groups:
-    #     - bootloader
+          - tf-psa-crypto
     - name: firmups-device-sdk
       repo-path: device-sdk
       path: ./modules/lib/firmups-device-sdk
       remote: firmups
-      revision: v0.1.0
+      revision: gateway-functionality
       submodules: true
+    - name: zephyr-bluethoot-integration
+      path: ./modules/lib/zephyr-bluethoot-integration
+      remote: firmups-ssh
+      revision: main

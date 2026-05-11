@@ -6,7 +6,9 @@ modules/
 build/
 build_native/
 build_dk/
+build_nxp/
 .vscode/settings.json
 net-tools
 bootloader/
 flash.bin
+firmware/credentials.conf

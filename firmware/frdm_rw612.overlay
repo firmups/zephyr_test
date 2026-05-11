@@ -1,0 +1,71 @@
+/* FRDM-RW612 overlay
+ *
+ * - Disables Ethernet MAC/MDIO (using integrated WiFi instead)
+ * - Sets MCUboot chosen partition references
+ * - Carves a 128 KB scratch partition out of the flash area that the board DTS
+ *   assigns entirely to storage, then remaps storage to start after scratch
+ * - Mounts LittleFS on the storage partition (no SD card on this board)
+ */
+
+/* Disable Ethernet — using integrated WiFi radio instead */
+&enet_mac {
+	status = "disabled";
+};
+
+&enet_mdio {
+	status = "disabled";
+};
+
+/delete-node/ &storage_partition;
+
+/* Add red and blue to the RGB LED (green is defined in board DTS on hsgpio0 pin 12) */
+&{/leds} {
+	red_led: led_0 {
+		gpios = <&hsgpio0 1 GPIO_ACTIVE_LOW>;
+	};
+	blue_led: led_2 {
+		gpios = <&hsgpio0 0 GPIO_ACTIVE_LOW>;
+	};
+};
+
+/ {
+	chosen {
+		zephyr,mcuboot-primary   = &slot0_partition;
+		zephyr,mcuboot-secondary = &slot1_partition;
+		zephyr,mcuboot-scratch   = &scratch_partition;
+	};
+
+	fstab {
+		compatible = "zephyr,fstab";
+
+		lfs0: lfs0 {
+			compatible = "zephyr,fstab,littlefs";
+			partition = <&storage_partition>;
+			mount-point = "/lfs:";
+			automount;
+			read-size = <16>;
+			prog-size = <16>;
+			cache-size = <64>;
+			lookahead-size = <32>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+/* The board DTS places storage_partition at 0x620000.
+ * We insert a 128 KB scratch partition there, then push storage to 0x640000.
+ */
+&w25q512jvfiq {
+	partitions {
+		scratch_partition: partition@620000 {
+			label = "image-scratch";
+			reg = <0x00620000 DT_SIZE_K(128)>;
+		};
+
+		storage_partition: partition@640000 {
+			label = "storage";
+			reg = <0x00640000 DT_SIZE_M(57)>;
+		};
+	};
+};
+

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifdef NATIVE_SIM
+#if defined(NATIVE_SIM) || defined(FRDM_RW612)
 #define FILESYSTEM_MOUNT_POINT "/lfs:"
 #else
 #define FILESYSTEM_MOUNT_POINT "/SD:"

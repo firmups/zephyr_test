@@ -1,0 +1,42 @@
+/* frdm_rw612-specific mcuboot overlay.
+ *
+ * Adds a scratch partition to the external QSPI flash and
+ * wires up the mcuboot chosen nodes.
+ */
+
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+		zephyr,mcuboot-primary = &slot0_partition;
+		zephyr,mcuboot-secondary = &slot1_partition;
+		zephyr,mcuboot-scratch = &scratch_partition;
+	};
+};
+
+/*
+ * Extend the w25q512jvfiq partition table to add a scratch partition.
+ * Original layout (from frdm_rw612_common.dtsi):
+ *   boot   @ 0x000000  128 KB
+ *   slot0  @ 0x020000  3 MB
+ *   slot1  @ 0x320000  3 MB
+ *   storage@ 0x620000  (58 MB - 128 KB)
+ *
+ * New layout — carve 128 KB for scratch before storage:
+ *   scratch@ 0x620000  128 KB
+ *   storage@ 0x640000  (58 MB - 256 KB)
+ */
+&w25q512jvfiq {
+	partitions {
+		/delete-node/ partition@620000;
+
+		scratch_partition: partition@620000 {
+			label = "image-scratch";
+			reg = <0x00620000 DT_SIZE_K(128)>;
+		};
+
+		storage_partition: partition@640000 {
+			label = "storage";
+			reg = <0x00640000 (DT_SIZE_M(58) - DT_SIZE_K(256))>;
+		};
+	};
+};
