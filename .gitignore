@@ -7,6 +7,7 @@ build/
 build_native/
 build_dk/
 build_nxp/
+build_nrf/
 .vscode/settings.json
 net-tools
 bootloader/

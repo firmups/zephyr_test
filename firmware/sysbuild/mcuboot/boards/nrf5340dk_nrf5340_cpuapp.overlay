@@ -1,0 +1,34 @@
+/* nrf5340dk_nrf5340_cpuapp-specific mcuboot overlay.
+ *
+ * Wires up MCUboot chosen nodes and repurposes the default storage area
+ * entirely as a scratch partition. No storage partition is needed because
+ * the nRF5340 application streams firmware chunks directly to slot1 flash
+ * without using the filesystem.
+ *
+ * Layout (1 MB internal flash):
+ *   boot    @ 0x000000   64 KB  (unchanged)
+ *   slot0   @ 0x010000  464 KB  (unchanged)
+ *   slot1   @ 0x084000  464 KB  (unchanged)
+ *   scratch @ 0x0F8000   32 KB  (replaces storage)
+ */
+
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+		zephyr,mcuboot-primary = &slot0_partition;
+		zephyr,mcuboot-secondary = &slot1_partition;
+		zephyr,mcuboot-scratch = &scratch_partition;
+	};
+};
+
+&flash0 {
+	partitions {
+		/delete-node/ partition@f8000;
+
+		scratch_partition: partition@f8000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-scratch";
+			reg = <0x000f8000 DT_SIZE_K(32)>;
+		};
+	};
+};

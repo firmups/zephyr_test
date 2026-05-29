@@ -12,15 +12,22 @@ project(firmups_device LANGUAGES C)
 
 warn_all(app)
 target_include_directories(app PRIVATE include)
-target_sources(app PRIVATE src/main.c src/udpclient.c src/application/common/fatal_error.c src/driver/common/filesystem.c)
+target_sources(app PRIVATE src/main.c src/application/common/fatal_error.c src/driver/common/filesystem.c)
 
 if(${BOARD} MATCHES "native")
   zephyr_compile_options(-fsanitize-undefined-trap-on-error)
   target_sources(app PRIVATE
+    src/udpclient.c
     src/application/native/firmware_updater.c
     src/driver/native/led.c
     src/driver/native/button.c)
   target_compile_definitions(app PUBLIC NATIVE_SIM)
+elseif(${BOARD} MATCHES "nrf5340dk")
+  target_sources(app PRIVATE
+    src/application/nrf5340dk/firmware_updater.c
+    src/driver/nrf5340dk/led.c
+    src/driver/nrf5340dk/button.c)
+  target_compile_definitions(app PUBLIC NRF5340DK)
 elseif(${BOARD} MATCHES "frdm_rw612")
   if("${CONFIG_APP_WIFI_SSID}" STREQUAL "")
     message(FATAL_ERROR "CONFIG_APP_WIFI_SSID is empty. "
@@ -37,6 +44,7 @@ elseif(${BOARD} MATCHES "frdm_rw612")
       "(file is gitignored)")
   endif()
   target_sources(app PRIVATE
+    src/udpclient.c
     src/application/frdm_rw612/firmware_updater.c
     src/application/frdm_rw612/wifi_connect.c
     src/driver/frdm_rw612/led.c
@@ -44,6 +52,7 @@ elseif(${BOARD} MATCHES "frdm_rw612")
   target_compile_definitions(app PUBLIC FRDM_RW612)
 else()
   target_sources(app PRIVATE
+    src/udpclient.c
     src/application/stm32h573i/firmware_updater.c
     src/driver/stm32h573i/led.c
     src/driver/stm32h573i/button.c)

@@ -136,6 +136,72 @@
       "problemMatcher": []
     },
     {
+      "label": "Build nrf-bt board",
+      "type": "shell",
+      "command": "cd firmware && west build -b nrf5340dk/nrf5340/cpuapp --sysbuild --build-dir build_nrf",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Rebuild nrf-bt board",
+      "type": "shell",
+      "command": "cd firmware && west build -b nrf5340dk/nrf5340/cpuapp --pristine --sysbuild --build-dir build_nrf",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Flash nrf-bt board bootloader",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nrf/mcuboot --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash nrf-bt board firmware",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nrf/firmware --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash nrf-bt board hci",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nrf/hci_ipc --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flash nrf-bt board combined",
+      "type": "shell",
+      "command": "cd firmware && west flash -d build_nrf/hci_ipc --runner jlink && west flash -d build_nrf/firmware --runner jlink && west flash -d build_nrf/mcuboot --runner jlink",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Run native_sim",
       "type": "shell",
       "options": {

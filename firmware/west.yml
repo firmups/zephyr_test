@@ -27,6 +27,8 @@ manifest:
           - mcuboot
           - mbedtls
           - tf-psa-crypto
+          - open-amp
+          - libmetal
     - name: firmups-device-sdk
       repo-path: device-sdk
       path: ./modules/lib/firmups-device-sdk

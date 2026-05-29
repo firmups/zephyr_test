@@ -85,12 +85,16 @@ struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffe
 	}
 
 	static const uint8_t bt_flags[] = {BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR};
-	static const uint8_t bt_name[] = CONFIG_BT_DEVICE_NAME;
-	static const struct bt_data ad[] = {
+	const struct bt_uuid_128 *svc_uuid = firmups_bt_gateway_get_service_uuid();
+	struct bt_data ad[] = {
 		{.type = BT_DATA_FLAGS, .data_len = sizeof(bt_flags), .data = bt_flags},
+		{.type = BT_DATA_UUID128_ALL, .data_len = 16, .data = svc_uuid->val},
+	};
+	static const uint8_t bt_name[] = CONFIG_BT_DEVICE_NAME;
+	static const struct bt_data sd[] = {
 		{.type = BT_DATA_NAME_COMPLETE, .data_len = sizeof(bt_name) - 1, .data = bt_name},
 	};
-	bt_err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), NULL, 0);
+	bt_err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 	if (bt_err) {
 		LOG_ERR("Advertising start failed: %d", bt_err);
 		return NULL;
@@ -233,7 +237,7 @@ int firmups_sdk_log_info(const char *file, int line, const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	uint8_t buffer[256];
-	int ret = sprintf(buffer, format, args);
+	int ret = vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 	LOG_INF("INFO: %s:%d: %s", file, line, buffer);
 	return ret;
@@ -244,7 +248,7 @@ int firmups_sdk_log_warning(const char *file, int line, const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	uint8_t buffer[256];
-	int ret = sprintf(buffer, format, args);
+	int ret = vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 	LOG_WRN("WARNING: %s:%d: %s", file, line, buffer);
 	return ret;
@@ -255,7 +259,7 @@ int firmups_sdk_log_error(const char *file, int line, const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	uint8_t buffer[256];
-	int ret = sprintf(buffer, format, args);
+	int ret = vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 	LOG_ERR("ERROR: %s:%d: %s", file, line, buffer);
 	return ret;
