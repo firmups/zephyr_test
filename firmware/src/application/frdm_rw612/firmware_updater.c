@@ -11,7 +11,6 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/dfu/flash_img.h>
 #include <zephyr/random/random.h>
-#include <zephyr/bluetooth/bluetooth.h>
 #include <firmups_zephyr_bluetooth/firmups_bt_gateway.h>
 
 #include <stdio.h>
@@ -72,34 +71,11 @@ struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffe
 	LOG_INF("Firmware updater initialized. Device ID: %d, Firmware Version: %d", device_id,
 		firmware_version);
 
-	int bt_err = bt_enable(NULL);
-	if (bt_err) {
-		LOG_ERR("Bluetooth enable failed: %d", bt_err);
-		return NULL;
-	}
-
-	bt_err = firmups_bt_gateway_init(context->firmups_context);
+	int bt_err = firmups_bt_gateway_init(context->firmups_context);
 	if (bt_err) {
 		LOG_ERR("BT gateway init failed: %d", bt_err);
 		return NULL;
 	}
-
-	static const uint8_t bt_flags[] = {BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR};
-	const struct bt_uuid_128 *svc_uuid = firmups_bt_gateway_get_service_uuid();
-	struct bt_data ad[] = {
-		{.type = BT_DATA_FLAGS, .data_len = sizeof(bt_flags), .data = bt_flags},
-		{.type = BT_DATA_UUID128_ALL, .data_len = 16, .data = svc_uuid->val},
-	};
-	static const uint8_t bt_name[] = CONFIG_BT_DEVICE_NAME;
-	static const struct bt_data sd[] = {
-		{.type = BT_DATA_NAME_COMPLETE, .data_len = sizeof(bt_name) - 1, .data = bt_name},
-	};
-	bt_err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
-	if (bt_err) {
-		LOG_ERR("Advertising start failed: %d", bt_err);
-		return NULL;
-	}
-	LOG_INF("BLE advertising started as \"%s\"", CONFIG_BT_DEVICE_NAME);
 
 	if (!boot_is_img_confirmed()) {
 		LOG_INF("Confirming current firmware image...");
