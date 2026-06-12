@@ -80,7 +80,6 @@
 
                     if [ "$RUN_OFFLINE" != "true" ]; then
                       west update
-                      west blobs fetch -l rw61x.*
                       if [ ! -f "${venvDir}/.pyocd_lock" ]; then
                         pyocd pack update
                         pyocd pack install STM32H573IIKxQ
@@ -89,6 +88,7 @@
                     fi
                     west zephyr-export
                     west packages pip --install
+                    west blobs fetch -l rw61x.*
 
           	  export PS1=(firmups-zephyr-test)$PS1
                     echo ""
