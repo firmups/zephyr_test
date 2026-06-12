@@ -161,11 +161,24 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 		LOG_ERR("Firmware download context could not be initialized");
 		return -1;
 	}
+
+	uint8_t area_id = PARTITION_ID(slot1_partition);
+	const struct flash_area *fa;
+	int rc = flash_area_open(area_id, &fa);
+	if (rc) {
+		LOG_ERR("flash_area_open(%u) failed: %d", area_id, rc);
+		return rc;
+	}
+	uint32_t flash_slot_size = fa->fa_size;
+	flash_area_close(fa);
+
 	bool download_complete = false;
 	if (file_exists(UPDATE_PATH)) {
 		(void)fs_unlink(UPDATE_PATH);
 	}
 	uint8_t const *chunk_pointer;
+	uint32_t bytes_downloaded = 0;
+	uint8_t last_reported_pct = 0;
 
 	while (!download_complete) {
 		uint16_t chunk_size = 0;
@@ -178,11 +191,18 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 		LOG_DBG("Downloaded chunk of size: %d", chunk_size);
 
 		if (chunk_size > 0) {
-			int rc = filesystem_append_bytes(UPDATE_PATH, chunk_pointer,
-							 (size_t)chunk_size);
+			rc = filesystem_append_bytes(UPDATE_PATH, chunk_pointer,
+						     (size_t)chunk_size);
 			if (rc < 0) {
 				LOG_ERR("Append failed: %d", rc);
 				return rc;
+			}
+			bytes_downloaded += chunk_size;
+			uint8_t pct = (uint8_t)((bytes_downloaded * 100UL) / flash_slot_size);
+			if (pct >= last_reported_pct + 5) {
+				last_reported_pct = (pct / 5) * 5;
+				LOG_INF("Firmware download: %u%% (%u bytes)", last_reported_pct,
+					bytes_downloaded);
 			}
 		}
 	}
@@ -194,7 +214,7 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 	}
 
 	LOG_INF("Writing firmware to slot1 partition...");
-	int rc = write_firmware_to_secondary_slot(UPDATE_PATH);
+	rc = write_firmware_to_secondary_slot(UPDATE_PATH);
 	if (rc != 0) {
 		LOG_ERR("Firmware could not be written to flash. Aborting...");
 		return rc;
@@ -283,6 +303,14 @@ static int write_firmware_to_secondary_slot(char const *path)
 	struct fs_file_t file;
 	fs_file_t_init(&file);
 
+	struct fs_dirent entry;
+	rc = fs_stat(path, &entry);
+	if (rc < 0) {
+		LOG_ERR("fs_stat('%s') failed: %d", path, rc);
+		return rc;
+	}
+	size_t file_size = entry.size;
+
 	rc = fs_open(&file, path, FS_O_READ);
 	if (rc < 0) {
 		LOG_ERR("fs_open('%s') failed: %d", path, rc);
@@ -319,6 +347,7 @@ static int write_firmware_to_secondary_slot(char const *path)
 	uint8_t buf[1024];
 	ssize_t rd;
 	size_t total = 0;
+	uint8_t last_reported_pct = 0;
 
 	do {
 		rd = fs_read(&file, buf, sizeof(buf));
@@ -334,6 +363,12 @@ static int write_firmware_to_secondary_slot(char const *path)
 				break;
 			}
 			total += (size_t)rd;
+			uint8_t pct = (uint8_t)((total * 100UL) / file_size);
+			if (pct >= last_reported_pct + 5) {
+				last_reported_pct = (pct / 5) * 5;
+				LOG_INF("Writing firmware: %u%% (%zu bytes)", last_reported_pct,
+					total);
+			}
 		}
 	} while (rd > 0);
 

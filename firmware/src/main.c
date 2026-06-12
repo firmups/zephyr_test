@@ -19,6 +19,11 @@ static struct firmware_updater_context *fw_u_c;
 
 static void firmware_check(void)
 {
+#ifdef NRF5340DK
+	if (!firmware_updater_connect(fw_u_c)) {
+		return;
+	}
+#endif
 	if (firmware_update_available(fw_u_c)) {
 		int ret = firmware_updater_update_firmware(fw_u_c);
 		if (ret < 0) {
@@ -27,6 +32,9 @@ static void firmware_check(void)
 	} else {
 		LOG_INF("No firmware update required");
 	}
+#ifdef NRF5340DK
+	firmware_updater_disconnect(fw_u_c);
+#endif
 }
 
 int main(void)

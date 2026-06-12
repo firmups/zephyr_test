@@ -65,7 +65,6 @@ static uint8_t notify_cb(struct bt_conn *conn, struct bt_gatt_subscribe_params *
 {
 	ARG_UNUSED(conn);
 	ARG_UNUSED(params);
-	LOG_INF("notify_cb len=%d", len);
 
 	if (data == NULL) {
 		/* Unsubscribed */
@@ -255,7 +254,53 @@ static enum firmups_sdk_error_code ble_send_data(uint8_t *send_buffer, uint16_t 
 	return FIRMUPS_SDK_ERROR_NONE;
 }
 
+/* ===================== BLE scan + connect ===================== */
+static bool scan_and_connect(void)
+{
+	if (ble_conn != NULL) {
+		return true;
+	}
+
+	k_sem_reset(&ble_ready_sem);
+
+	struct bt_le_scan_param scan_param = {
+		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.options = BT_LE_SCAN_OPT_NONE,
+		.interval = BT_GAP_SCAN_FAST_INTERVAL,
+		.window = BT_GAP_SCAN_FAST_WINDOW,
+	};
+	int err = bt_le_scan_start(&scan_param, scan_cb);
+	if (err) {
+		LOG_ERR("Scan start failed: %d", err);
+		return false;
+	}
+
+	LOG_INF("Scanning for FIRMUPS gateway...");
+	if (k_sem_take(&ble_ready_sem, K_SECONDS(5)) != 0) {
+		LOG_WRN("No gateway found within 5s");
+		bt_le_scan_stop();
+		return false;
+	}
+
+	LOG_INF("BLE gateway ready");
+	return true;
+}
+
 /* ===================== Public Functions ===================== */
+bool firmware_updater_connect(struct firmware_updater_context *context)
+{
+	ARG_UNUSED(context);
+	return scan_and_connect();
+}
+
+void firmware_updater_disconnect(struct firmware_updater_context *context)
+{
+	ARG_UNUSED(context);
+	if (ble_conn != NULL) {
+		bt_conn_disconnect(ble_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+	}
+}
+
 struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffer,
 							     uint32_t work_buffer_size,
 							     uint32_t device_id,
@@ -265,31 +310,11 @@ struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffe
 		return NULL;
 	}
 
-	/* BLE init and connection to gateway */
 	int err = bt_enable(NULL);
 	if (err) {
 		LOG_ERR("bt_enable failed: %d", err);
 		return NULL;
 	}
-
-	struct bt_le_scan_param scan_param = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
-		.options = BT_LE_SCAN_OPT_NONE,
-		.interval = BT_GAP_SCAN_FAST_INTERVAL,
-		.window = BT_GAP_SCAN_FAST_WINDOW,
-	};
-	err = bt_le_scan_start(&scan_param, scan_cb);
-	if (err) {
-		LOG_ERR("Scan start failed: %d", err);
-		return NULL;
-	}
-
-	LOG_INF("Scanning for FIRMUPS gateway...");
-	if (k_sem_take(&ble_ready_sem, K_SECONDS(30)) != 0) {
-		LOG_ERR("Timed out waiting for BLE gateway");
-		return NULL;
-	}
-	LOG_INF("BLE gateway ready");
 
 	/* SDK init */
 	struct firmware_updater_context *context = (struct firmware_updater_context *)work_buffer;
@@ -328,13 +353,17 @@ struct firmware_updater_context *firmware_updater_initialize(uint8_t *work_buffe
 			k_sleep(K_FOREVER);
 		}
 		LOG_INF("Firmware update applied successfully. Informing backend...");
-		struct firmups_sdk_device_info_update fw_info;
-		fw_info.firmware = context->firmware_version;
-		fw_info.status = 0;
-		enum firmups_sdk_error_code error =
-			firmups_sdk_set_device_info(context->firmups_context, &fw_info);
-		if (error != FIRMUPS_SDK_ERROR_NONE) {
-			LOG_ERR("Device info could not be updated");
+		if (scan_and_connect()) {
+			struct firmups_sdk_device_info_update fw_info;
+			fw_info.firmware = context->firmware_version;
+			fw_info.status = 0;
+			enum firmups_sdk_error_code error =
+				firmups_sdk_set_device_info(context->firmups_context, &fw_info);
+			if (error != FIRMUPS_SDK_ERROR_NONE) {
+				LOG_ERR("Device info could not be updated");
+			}
+		} else {
+			LOG_ERR("Could not connect to gateway to report firmware status");
 		}
 	}
 
@@ -399,7 +428,8 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 		LOG_ERR("flash_area_open(%u) failed: %d", area_id, rc);
 		return rc;
 	}
-	rc = flash_area_erase(fa, 0, fa->fa_size);
+	uint32_t flash_slot_size = fa->fa_size;
+	rc = flash_area_erase(fa, 0, flash_slot_size);
 	flash_area_close(fa);
 	if (rc) {
 		LOG_ERR("flash_area_erase failed: %d", rc);
@@ -426,6 +456,8 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 
 	bool download_complete = false;
 	const uint8_t *chunk_pointer;
+	uint32_t bytes_downloaded = 0;
+	uint8_t last_reported_pct = 0;
 
 	while (!download_complete) {
 		uint16_t chunk_size = 0;
@@ -442,6 +474,13 @@ int firmware_updater_update_firmware(struct firmware_updater_context *context)
 			if (rc) {
 				LOG_ERR("flash_img_buffered_write failed: %d", rc);
 				return rc;
+			}
+			bytes_downloaded += chunk_size;
+			uint8_t pct = (uint8_t)((bytes_downloaded * 100UL) / flash_slot_size);
+			if (pct >= last_reported_pct + 5) {
+				last_reported_pct = (pct / 5) * 5;
+				LOG_INF("Firmware download: %u%% (%u bytes)", last_reported_pct,
+					bytes_downloaded);
 			}
 		}
 	}
